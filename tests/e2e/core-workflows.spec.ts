@@ -45,6 +45,7 @@ async function pasteInto(page: Page) {
 test("shows a single copy action and no legacy toolbars", async ({ page }) => {
   await expect(copyButton(page)).toBeVisible();
   await expect(page.getByRole("button")).toHaveCount(2);
+  await expect(page.getByRole("link", { name: "GitHub 源代码" })).toHaveAttribute("href", "https://github.com/sdcb/wechat-md");
 });
 
 test("draft auto-saves and survives reload", async ({ page }) => {

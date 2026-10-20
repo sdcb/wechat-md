@@ -1,6 +1,6 @@
 import type { SaveState } from "../hooks/useDraft";
 import type { CopyState } from "../hooks/useClipboard";
-import { BrandMark, CheckIcon, CopyIcon } from "./icons";
+import { BrandMark, CheckIcon, CopyIcon, GitHubIcon } from "./icons";
 
 type TopBarProps = {
   saveState: SaveState;
@@ -29,6 +29,16 @@ export function TopBar({ saveState, copyState, canCopy, onCopy }: TopBarProps) {
         <span className={`saveState ${saveState}`} role="status">
           {saveLabels[saveState]}
         </span>
+        <a
+          className="githubLink"
+          href="https://github.com/sdcb/wechat-md"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="GitHub 源代码"
+          aria-label="GitHub 源代码"
+        >
+          <GitHubIcon />
+        </a>
         <button className={`primaryButton${copied ? " done" : ""}`} type="button" disabled={!canCopy} onClick={onCopy}>
           {copied ? <CheckIcon /> : <CopyIcon />}
           {copied ? "已复制" : "复制到微信"}
