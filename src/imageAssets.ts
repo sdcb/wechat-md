@@ -96,6 +96,23 @@ function canvasToBlob(canvas: HTMLCanvasElement, type: string, quality?: number)
   });
 }
 
+// Browsers only accept image/png when writing images to the clipboard.
+export async function toPngBlob(blob: Blob) {
+  if (blob.type === "image/png") return blob;
+  const bitmap = await createImageBitmap(blob);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    bitmap.close();
+    throw new Error("当前浏览器无法转换图片");
+  }
+  context.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return canvasToBlob(canvas, "image/png");
+}
+
 function buildAssetId() {
   const date = new Date();
   const stamp = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;

@@ -470,7 +470,7 @@ button:disabled {
 
 .imageList li {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 8px;
   padding: 6px;
@@ -539,6 +539,17 @@ button:disabled {
 
 .articleBody img {
   max-width: 100%;
+}
+
+.articleBody img[data-asset-id] {
+  cursor: copy;
+  transition: outline-color 0.15s;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.articleBody img[data-asset-id]:hover {
+  outline-color: var(--blue);
 }
 
 /* Toast */

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent, Dispatch, SetStateAction } from "react";
-import { compressImageFile, deleteImageAsset, describeStorageError, getAllImageAssets, putImageAsset } from "../imageAssets";
+import { compressImageFile, deleteImageAsset, describeStorageError, getAllImageAssets, putImageAsset, toPngBlob } from "../imageAssets";
 import type { ImageAsset } from "../imageAssets";
 import { getLocalAssetReferences, getMissingLocalImages, replaceImageUrl } from "../markdown/assets";
 import type { MissingLocalImage } from "../markdown/assets";
@@ -217,6 +217,29 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
     if (!assetUrlsRef.current[asset.id]) URL.revokeObjectURL(url);
   }
 
+  async function copyImage(asset: ImageAsset) {
+    if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
+      notify("当前浏览器不支持复制图片，请使用「下载」后手动上传", "error");
+      return;
+    }
+    try {
+      // Passing a promise keeps the user gesture alive in Safari while the PNG is being encoded.
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": toPngBlob(asset.blob) })]);
+      notify(
+        `已复制图片 ${asset.id}，在公众号中选中对应占位块后 Ctrl+V 粘贴${asset.type === "image/gif" ? "（GIF 会变成静态图，动图请下载后上传）" : ""}`,
+        asset.type === "image/gif" ? "warning" : "success",
+        6000,
+      );
+    } catch {
+      notify("复制图片失败：浏览器拒绝写入剪贴板，请使用「下载」后手动上传", "error");
+    }
+  }
+
+  function copyImageById(id: string) {
+    const asset = assets.find((item) => item.id === id);
+    if (asset) void copyImage(asset);
+  }
+
   return {
     assetUrls,
     referencedAssets,
@@ -229,5 +252,7 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
     handleDrop,
     removeImage,
     downloadImage,
+    copyImage,
+    copyImageById,
   };
 }

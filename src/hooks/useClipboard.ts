@@ -69,7 +69,7 @@ export function useClipboard({
     if (missingImageCount) notify(`已复制。其中 ${missingImageCount} 张本地图片尚未匹配到文件，已以文件名占位。`, "warning", 8000);
     else if (localImageCount)
       notify(
-        `已复制。其中 ${localImageCount} 张本地图片以 ID 占位，请在公众号里手动上传替换（可在左下角「图片」中下载）。`,
+        `已复制。其中 ${localImageCount} 张本地图片以 ID 占位：点击预览中的图片（或「图片」菜单中的「复制」），再到公众号里选中对应占位块粘贴即可替换。`,
         "warning",
         8000,
       );

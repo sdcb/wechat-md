@@ -80,6 +80,7 @@ export default function App() {
               processing={images.processing}
               onAdd={(files) => void images.addImageFiles(files)}
               onImportFolder={(files) => void images.importFiles(files)}
+              onCopy={(asset) => void images.copyImage(asset)}
               onDownload={images.downloadImage}
               onRemove={(asset) => void images.removeImage(asset)}
             />
@@ -90,7 +91,12 @@ export default function App() {
           onDragActiveChange={images.setDragActive}
           onScroll={scroll.onEditorScroll}
         />
-        <PreviewPane previewRef={scroll.previewRef} bodyHtml={bodyHtml} onScroll={scroll.onPreviewScroll} />
+        <PreviewPane
+          previewRef={scroll.previewRef}
+          bodyHtml={bodyHtml}
+          onScroll={scroll.onPreviewScroll}
+          onImageClick={images.copyImageById}
+        />
       </main>
       <ToastView toast={toast} onDismiss={dismiss} />
     </div>

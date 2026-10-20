@@ -203,3 +203,33 @@ test("pasted images are stored locally and listed in the image menu", async ({ p
   await page.getByRole("button", { name: /图片 · 1/ }).click();
   await expect(page.getByRole("dialog", { name: "本地图片" }).locator("li")).toHaveCount(1);
 });
+
+test("local images can be copied to the clipboard as PNG from the preview and the image menu", async ({ page }) => {
+  await editor(page).fill("");
+  await editor(page).click();
+  await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = 8;
+    canvas.getContext("2d")!.fillRect(0, 0, 8, 8);
+    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((value) => resolve(value!), "image/jpeg"));
+    const data = new DataTransfer();
+    data.items.add(new File([blob], "photo.jpg", { type: "image/jpeg" }));
+    document.querySelector("textarea")!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true }));
+  });
+  await expect(page.locator(".articleBody img")).toHaveCount(1);
+  const readClipboardImageType = () =>
+    page.evaluate(async () => {
+      const items = await navigator.clipboard.read();
+      return items[0]?.types.find((type) => type.startsWith("image/")) ?? "";
+    });
+
+  await page.locator(".articleBody img").click();
+  await expect(page.getByRole("status").filter({ hasText: "已复制图片" })).toBeVisible();
+  expect(await readClipboardImageType()).toBe("image/png");
+
+  await writeClipboard(page, "reset", "<p>reset</p>");
+  await page.getByRole("button", { name: /图片 · 1/ }).click();
+  await page.getByRole("dialog", { name: "本地图片" }).getByRole("button", { name: "复制" }).click();
+  await expect.poll(readClipboardImageType).toBe("image/png");
+});

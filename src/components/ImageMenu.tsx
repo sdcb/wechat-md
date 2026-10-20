@@ -11,11 +11,12 @@ type ImageMenuProps = {
   processing: boolean;
   onAdd: (files: File[]) => void;
   onImportFolder: (files: File[]) => void;
+  onCopy: (asset: ImageAsset) => void;
   onDownload: (asset: ImageAsset) => void;
   onRemove: (asset: ImageAsset) => void;
 };
 
-export function ImageMenu({ assets, missing, urls, processing, onAdd, onImportFolder, onDownload, onRemove }: ImageMenuProps) {
+export function ImageMenu({ assets, missing, urls, processing, onAdd, onImportFolder, onCopy, onDownload, onRemove }: ImageMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
@@ -48,7 +49,7 @@ export function ImageMenu({ assets, missing, urls, processing, onAdd, onImportFo
         <div className="imagePopover" role="dialog" aria-label="本地图片">
           <p className="imagePopoverHint">
             把文章文件夹（含 .md 和图片）拖进编辑区，会打开其中的 Markdown 并按文件名匹配图片。本地图片保存在浏览器中，复制后以 ID
-            占位，请在公众号编辑器中上传替换。
+            占位；点「复制」（或点击预览中的图片）后，在公众号编辑器中选中对应占位块粘贴即可替换。
           </p>
           {assets.length > 0 && (
             <ul className="imageList">
@@ -61,6 +62,9 @@ export function ImageMenu({ assets, missing, urls, processing, onAdd, onImportFo
                       {asset.width}×{asset.height} · {formatBytes(asset.compressedSize)}
                     </span>
                   </div>
+                  <button className="linkButton" type="button" onClick={() => onCopy(asset)}>
+                    复制
+                  </button>
                   <button className="linkButton" type="button" onClick={() => onDownload(asset)}>
                     下载
                   </button>
