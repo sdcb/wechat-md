@@ -12,6 +12,13 @@ const codeFontFamily =
 /** Table cells up to this display width (CJK counts as 2) never wrap; longer cells wrap normally. */
 const tableNoWrapMaxWidth = 30;
 
+function lightenHexColor(color: string, ratio: number) {
+  const match = /^#([0-9a-f]{6})$/i.exec(color);
+  if (!match) return color;
+  const channels = [0, 2, 4].map((offset) => parseInt(match[1].slice(offset, offset + 2), 16));
+  return `#${channels.map((value) => Math.round(value + (255 - value) * ratio).toString(16).padStart(2, "0")).join("")}`;
+}
+
 function getTextDisplayWidth(text: string) {
   let width = 0;
   for (const char of text.replace(/\s+/g, " ").trim())
@@ -284,10 +291,14 @@ export function renderMarkdown(markdown: string, theme: Theme, assetUrls: Record
         code.style.wordBreak = "normal";
       });
     });
+    // WeChat dark mode brightens dark text much more on gray stripes than on white rows; a slightly
+    // lighter stripe text color keeps both row types at the same brightness after conversion.
+    const stripeTextColor = lightenHexColor(theme.text, 0.12);
     table.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((row, index) => {
       if (index % 2 === 1 && theme.tableStyle !== "minimal")
         row.querySelectorAll<HTMLTableCellElement>("td").forEach((cell) => {
           cell.style.background = theme.codeBg;
+          cell.style.color = stripeTextColor;
         });
     });
   });

@@ -11,6 +11,14 @@ describe("Markdown rendering", () => {
     expect(html).toContain("text-align:right");
   });
 
+  it("avoids opaque tinted backgrounds that WeChat dark mode keeps bright", () => {
+    expect(defaultTheme.accentSoft).toMatch(/^rgba\(/);
+    expect(defaultTheme.inlineCodeBg).toMatch(/^rgba\(/);
+    const [, red, green, blue] = /^#(..)(..)(..)$/.exec(defaultTheme.codeBg) ?? [];
+    expect(red).toBe(green);
+    expect(green).toBe(blue);
+  });
+
   it("copies local images as ID placeholders without Base64", () => {
     const rendered = renderMarkdown("![封面](asset://IMG-COVER)", defaultTheme, { "IMG-COVER": "blob:http://localhost/image" });
     const copied = buildCopyHtml(rendered, defaultTheme);
