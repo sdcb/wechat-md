@@ -2,7 +2,9 @@ import type { Theme } from "../types";
 
 const fluentBlue = "#0078d4";
 const fluentBlueDark = "#004578";
-const dotnetPurple = "#512bd4";
+// mp-darkmode inverts dark text (HSL lightness <= 40%) to 90% - L, but caps brighter colored text at a dim
+// level; a deep indigo therefore turns into a readable light purple in WeChat dark mode.
+const inlineCodePurple = "#2d1467";
 
 export const defaultTheme: Theme = {
   id: "dotnet",
@@ -16,7 +18,7 @@ export const defaultTheme: Theme = {
   muted: "#616161",
   border: "rgba(0,120,212,0.22)",
   codeBg: "#f7f7f7",
-  inlineCodeColor: dotnetPurple,
+  inlineCodeColor: inlineCodePurple,
   inlineCodeBg: "rgba(81,43,212,0.07)",
   fontFamily: "system",
   bodyFontSize: 16,
