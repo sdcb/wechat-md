@@ -4,6 +4,7 @@ import { compressImageFile, deleteImageAsset, describeStorageError, getAllImageA
 import type { ImageAsset } from "../imageAssets";
 import { getLocalAssetReferences, getMissingLocalImages, replaceImageUrl } from "../markdown/assets";
 import type { MissingLocalImage } from "../markdown/assets";
+
 import type { Notify } from "./useToast";
 
 export const draftAssetOwner = "draft";
@@ -53,6 +54,18 @@ function collectDroppedFiles(dataTransfer: DataTransfer) {
   return Promise.all(entries.map((entry) => readEntryFiles(entry))).then((files) => files.flat());
 }
 
+const maxInsertedImages = 20;
+
+// A dropped article folder usually contains one Markdown file next to its images; prefer index.md / README.md.
+function pickMarkdownFile(files: File[]) {
+  const candidates = files.filter((file) => /\.(?:md|markdown)$/i.test(file.name));
+  return (
+    candidates.find((file) => /^index\.md$/i.test(file.name)) ??
+    candidates.find((file) => /^readme\.md$/i.test(file.name)) ??
+    candidates.sort((a, b) => a.name.localeCompare(b.name))[0]
+  );
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -92,18 +105,36 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
   }, [assets, markdown]);
   const missingImages = useMemo(() => getMissingLocalImages(markdown), [markdown]);
 
-  async function addImageFiles(files: File[]) {
-    const images = files.filter((file) => file.type.startsWith("image/"));
-    if (!images.length) return;
+  async function importFiles(files: File[]) {
+    const markdownFile = pickMarkdownFile(files);
+    if (!markdownFile) {
+      await addImageFiles(files);
+      return;
+    }
+    const text = (await markdownFile.text()).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    setMarkdown(text);
+    await addImageFiles(files, { markdown: text, openedName: markdownFile.name });
+  }
+
+  async function addImageFiles(files: File[], opened?: { markdown: string; openedName: string }) {
+    const images = files.filter((file) => file.type.startsWith("image/")).sort((a, b) => a.name.localeCompare(b.name));
     const missingByName = new Map<string, MissingLocalImage[]>();
-    getMissingLocalImages(markdown).forEach((image) => {
+    getMissingLocalImages(opened?.markdown ?? markdown).forEach((image) => {
       const key = image.fileName.toLowerCase();
       missingByName.set(key, [...(missingByName.get(key) ?? []), image]);
     });
     const matched = images.filter((file) => missingByName.has(file.name.toLowerCase()));
     // When the draft references local files, treat dropped files as candidates for those references only.
-    const matching = missingByName.size > 0 && matched.length > 0;
-    const selected = matching ? matched : images.slice(0, 10);
+    const matching = Boolean(opened) || (missingByName.size > 0 && matched.length > 0);
+    const selected = matching ? matched : images.slice(0, maxInsertedImages);
+    if (!selected.length) {
+      if (opened)
+        notify(
+          `已打开 ${opened.openedName}${missingByName.size ? `，${missingByName.size} 张本地图片未在文件夹中找到` : ""}`,
+          missingByName.size ? "warning" : "success",
+        );
+      return;
+    }
     setProcessing(true);
     try {
       const added: Array<{ asset: ImageAsset; targets: MissingLocalImage[] }> = [];
@@ -135,10 +166,14 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
       if (matching) {
         const remaining = missingByName.size - added.length;
         notify(
-          `已匹配 ${added.length} 张本地图片（${size}）${remaining > 0 ? `，还缺 ${remaining} 张` : ""}`,
+          `${opened ? `已打开 ${opened.openedName}，` : "已"}匹配 ${added.length} 张本地图片（${size}）${remaining > 0 ? `，还缺 ${remaining} 张` : ""}`,
           remaining > 0 ? "warning" : "success",
         );
-      } else notify(`已添加 ${added.length} 张图片（${size}）`);
+      } else
+        notify(
+          `已添加 ${added.length} 张图片（${size}）${images.length > added.length ? `，单次最多添加 ${maxInsertedImages} 张` : ""}`,
+          images.length > added.length ? "warning" : "success",
+        );
     } catch (error) {
       notify(describeStorageError(error, "添加图片"), "error");
     } finally {
@@ -150,7 +185,7 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
     setDragActive(false);
     if (!Array.from(event.dataTransfer.items).some((item) => item.kind === "file")) return;
     event.preventDefault();
-    void collectDroppedFiles(event.dataTransfer).then((files) => addImageFiles(files));
+    void collectDroppedFiles(event.dataTransfer).then((files) => importFiles(files));
   }
 
   async function removeImage(asset: ImageAsset) {
@@ -190,6 +225,7 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
     dragActive,
     setDragActive,
     addImageFiles,
+    importFiles,
     handleDrop,
     removeImage,
     downloadImage,

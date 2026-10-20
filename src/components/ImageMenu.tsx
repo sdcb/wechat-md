@@ -10,11 +10,12 @@ type ImageMenuProps = {
   urls: Record<string, string>;
   processing: boolean;
   onAdd: (files: File[]) => void;
+  onImportFolder: (files: File[]) => void;
   onDownload: (asset: ImageAsset) => void;
   onRemove: (asset: ImageAsset) => void;
 };
 
-export function ImageMenu({ assets, missing, urls, processing, onAdd, onDownload, onRemove }: ImageMenuProps) {
+export function ImageMenu({ assets, missing, urls, processing, onAdd, onImportFolder, onDownload, onRemove }: ImageMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
@@ -45,7 +46,10 @@ export function ImageMenu({ assets, missing, urls, processing, onAdd, onDownload
       </button>
       {open && (
         <div className="imagePopover" role="dialog" aria-label="本地图片">
-          <p className="imagePopoverHint">本地图片保存在浏览器中，复制后以 ID 占位。请下载后在公众号编辑器中上传替换。</p>
+          <p className="imagePopoverHint">
+            把文章文件夹（含 .md 和图片）拖进编辑区，会打开其中的 Markdown 并按文件名匹配图片。本地图片保存在浏览器中，复制后以 ID
+            占位，请在公众号编辑器中上传替换。
+          </p>
           {assets.length > 0 && (
             <ul className="imageList">
               {assets.map((asset) => (
@@ -85,11 +89,9 @@ export function ImageMenu({ assets, missing, urls, processing, onAdd, onDownload
             <button className="secondaryButton" type="button" disabled={processing} onClick={() => inputRef.current?.click()}>
               添加图片…
             </button>
-            {missing.length > 0 && (
-              <button className="secondaryButton" type="button" disabled={processing} onClick={() => folderRef.current?.click()}>
-                选择文件夹…
-              </button>
-            )}
+            <button className="secondaryButton" type="button" disabled={processing} onClick={() => folderRef.current?.click()}>
+              打开文章文件夹…
+            </button>
           </div>
           <input
             ref={folderRef}
@@ -99,7 +101,7 @@ export function ImageMenu({ assets, missing, urls, processing, onAdd, onDownload
             onChange={(event) => {
               const files = Array.from(event.target.files ?? []);
               event.target.value = "";
-              onAdd(files);
+              onImportFolder(files);
             }}
           />
           <input

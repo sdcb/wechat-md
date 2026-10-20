@@ -154,6 +154,36 @@ test("VS Code preview images become relative paths and are matched by dropped fi
   await expect(page.getByText("已匹配 2 张本地图片")).toBeVisible();
 });
 
+test("dropping an article folder opens its Markdown and matches its images", async ({ page }) => {
+  await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = 8;
+    canvas.getContext("2d")!.fillRect(0, 0, 8, 8);
+    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((value) => resolve(value!), "image/png"));
+    const data = new DataTransfer();
+    data.items.add(new File([blob], "unused.png", { type: "image/png" }));
+    data.items.add(new File(["# 新文章\r\n\r\n![甲图](./images/01-a.png)\r\n\r\n![缺失](./99.png)\r\n"], "index.md", { type: "" }));
+    data.items.add(new File([blob], "01-a.png", { type: "image/png" }));
+    document.querySelector("textarea")!.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await expect(editor(page)).toHaveValue(/^# 新文章\n\n!\[甲图\]\(asset:\/\/IMG-[^)]+\)\n\n!\[缺失\]\(\.\/99\.png\)\n$/);
+  await expect(page.getByText("已打开 index.md，匹配 1 张本地图片")).toBeVisible();
+  await expect(page.locator(".articleBody img")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /缺 1/ })).toBeVisible();
+});
+
+test("dropping a single Markdown file replaces the current draft", async ({ page }) => {
+  await editor(page).fill("# 旧草稿\n\n旧内容");
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    data.items.add(new File(["# 拖入的文章\n\n![图](./a.png)\n"], "post.md", { type: "text/markdown" }));
+    document.querySelector("textarea")!.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await expect(editor(page)).toHaveValue("# 拖入的文章\n\n![图](./a.png)\n");
+  await expect(page.getByText("已打开 post.md，1 张本地图片未在文件夹中找到")).toBeVisible();
+});
+
 test("pasted images are stored locally and listed in the image menu", async ({ page }) => {
   await editor(page).fill("");
   await editor(page).click();

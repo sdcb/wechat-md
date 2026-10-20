@@ -79,6 +79,7 @@ export default function App() {
               urls={images.assetUrls}
               processing={images.processing}
               onAdd={(files) => void images.addImageFiles(files)}
+              onImportFolder={(files) => void images.importFiles(files)}
               onDownload={images.downloadImage}
               onRemove={(asset) => void images.removeImage(asset)}
             />
