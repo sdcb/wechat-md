@@ -43,8 +43,10 @@ npm run check        # 类型检查 + lint + 格式检查 + 单元测试 + 构�
 
 ## 致谢
 
-基于 [lxw112190/wechat-article-formatter](https://github.com/lxw112190/wechat-article-formatter) 精简重构。
+最初受 [lxw112190/wechat-article-formatter](https://github.com/lxw112190/wechat-article-formatter) 启发，自 v1.0 起已完全重写。
 
 ## License
 
-MIT
+Copyright (C) 2026 sdcb
+
+本项目基于 [GNU Affero General Public License v3.0](./LICENSE)（AGPL-3.0）发布。

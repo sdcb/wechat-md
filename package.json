@@ -1,6 +1,8 @@
 {
   "name": "wechat-article-formatter",
   "version": "1.3.2",
+  "author": "sdcb",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"

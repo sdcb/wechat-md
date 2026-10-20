@@ -53,7 +53,7 @@ $numericVersion = ($packageVersion -split '[+-]')[0]
 $versionParts = @($numericVersion -split '\.')
 while ($versionParts.Count -lt 4) { $versionParts += '0' }
 $peVersion = ($versionParts[0..3] -join '.')
-$copyright = "Copyright © $((Get-Date).Year) 天天代码码天天"
+$copyright = "Copyright © $((Get-Date).Year) sdcb"
 
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $outputPath) | Out-Null
 if (Test-Path -LiteralPath $outputPath) { Remove-Item -LiteralPath $outputPath -Force }
@@ -70,7 +70,7 @@ $packArguments = @(
   '--windowed',
   '--external-links', 'browser',
   '--icon', $iconPath,
-  '--company', '天天代码码天天',
+  '--company', 'sdcb',
   '--version', $peVersion,
   '--copyright', "`"$copyright`""
 )
@@ -84,7 +84,7 @@ $versionInfo = (Get-Item -LiteralPath $outputPath).VersionInfo
 $expectedMetadata = @{
   ProductName = '公众号排版助手'
   FileDescription = '微信公众号文章 Markdown 排版与发布工具'
-  CompanyName = '天天代码码天天'
+  CompanyName = 'sdcb'
   FileVersion = $peVersion
   ProductVersion = $peVersion
   LegalCopyright = $copyright
