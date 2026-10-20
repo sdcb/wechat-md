@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+artifacts/
+
+# local env
+.env
+.env.*
+
+# logs and caches
+*.log
+.npm-cache/
+.tmp/
+.wrangler/
+outputs/
+
+# local promotional articles and related assets
+local-promotion/
+test-results/
+playwright-report/
+
+# tooling
+.openai/
+.agents/
+
+# editor and system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

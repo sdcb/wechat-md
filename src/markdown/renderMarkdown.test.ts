@@ -1,0 +1,109 @@
+// @vitest-environment jsdom
+
+import { describe, expect, it } from "vitest";
+import { defaultTheme } from "../themes/themes";
+import { buildCopyHtml, renderMarkdown } from "./renderMarkdown";
+
+describe("Markdown rendering", () => {
+  it("renders GFM tables with inline styles", () => {
+    const html = renderMarkdown("| 名称 | 值 |\n| --- | ---: |\n| 测试 | 1 |", defaultTheme);
+    expect(html).toContain("<table");
+    expect(html).toContain("text-align:right");
+  });
+
+  it("copies local images as ID placeholders without Base64", () => {
+    const rendered = renderMarkdown("![封面](asset://IMG-COVER)", defaultTheme, { "IMG-COVER": "blob:http://localhost/image" });
+    const copied = buildCopyHtml(rendered, defaultTheme);
+    expect(copied).toContain("请上传图片：IMG-COVER");
+    expect(copied).not.toContain("blob:");
+    expect(copied).not.toContain("base64");
+  });
+
+  it("applies structural settings from a custom theme", () => {
+    const customTheme = {
+      ...defaultTheme,
+      headings: {
+        ...defaultTheme.headings,
+        h2: { ...defaultTheme.headings.h2, decoration: "pill" as const },
+      },
+      blockquoteStyle: "quote" as const,
+      codeStyle: "dark" as const,
+      tableStyle: "accent-header" as const,
+      dividerStyle: "dashed" as const,
+      imageStyle: "shadow" as const,
+    };
+    const html = renderMarkdown(
+      "## 标题\n\n> 引用\n\n```ts\nconst ok = true\n```\n\n| 名称 | 值 |\n| --- | --- |\n| A | B |\n\n---\n\n![图](https://example.com/a.png)",
+      customTheme,
+    );
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    expect(template.content.querySelector("h2")?.style.borderRadius).toBe("999px");
+    expect(template.content.querySelector("blockquote")?.style.textAlign).toBe("center");
+    expect(template.content.querySelector("pre")?.style.background).toBe("rgb(31, 41, 55)");
+    expect(template.content.querySelector("th")?.style.color).toBe("rgb(255, 255, 255)");
+    expect(template.content.querySelector("hr")?.style.borderTopStyle).toBe("dashed");
+    expect(template.content.querySelector("img")?.style.boxShadow).toContain("rgba");
+  });
+
+  it("keeps ASCII diagrams in a non-wrapping monospace code block", () => {
+    const html = renderMarkdown(
+      "```text\n             应用程序\n                 │\n             Stable C ABI\n                 │\n            PP-OCR Core\n```",
+      defaultTheme,
+    );
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const pre = template.content.querySelector("pre")!;
+    const code = template.content.querySelector<HTMLElement>("pre code")!;
+    expect(pre.style.fontFamily).toContain("monospace");
+    expect(pre.style.whiteSpace).toBe("pre");
+    expect(pre.style.wordBreak).toBe("normal");
+    expect(code.style.fontFamily).toContain("monospace");
+    expect(code.textContent).toContain("Stable C ABI");
+  });
+
+  it("highlights known fenced languages with inline token styles", () => {
+    const html = renderMarkdown("```javascript\nconst answer = 42;\n```", defaultTheme);
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    expect(template.content.querySelector("[data-code-language='javascript']")).not.toBeNull();
+    expect(template.content.querySelector("span[data-code-token='keyword']")?.getAttribute("style")).toContain("color");
+  });
+
+  it("leaves text blocks unhighlighted", () => {
+    const html = renderMarkdown("```text\nconst answer = 42;\n```", defaultTheme);
+    expect(html).not.toContain("data-code-token");
+  });
+
+  it("applies expanded typography, heading and list settings", () => {
+    const customTheme = {
+      ...defaultTheme,
+      fontFamily: "microsoft-yahei" as const,
+      bodyTextAlign: "justify" as const,
+      letterSpacing: 0.8,
+      firstLineIndent: 2,
+      unorderedListStyle: "square" as const,
+      strongStyle: "highlight" as const,
+      headings: {
+        ...defaultTheme.headings,
+        h4: {
+          ...defaultTheme.headings.h4,
+          fontSize: 21,
+          align: "right" as const,
+          decoration: "underline" as const,
+        },
+      },
+    };
+    const html = renderMarkdown("正文测试\n\n**重点**\n\n- 列表\n\n#### 四级标题", customTheme);
+    const template = document.createElement("template");
+    template.innerHTML = html;
+    const paragraph = template.content.querySelector("p")!;
+    expect(paragraph.style.fontFamily).toContain("Microsoft YaHei");
+    expect(paragraph.style.textAlign).toBe("justify");
+    expect(paragraph.style.textIndent).toBe("2em");
+    expect(template.content.querySelector("ul")?.style.listStyleType).toBe("square");
+    expect(template.content.querySelector("strong")?.style.background).not.toBe("");
+    expect(template.content.querySelector("h4")?.style.fontSize).toBe("21px");
+    expect(template.content.querySelector("h4")?.style.textAlign).toBe("right");
+  });
+});
