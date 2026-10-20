@@ -39,15 +39,28 @@ describe("WeChat copy compatibility", () => {
     expect(copied).not.toMatch(/>\s+</);
   });
 
-  it("copies images as WeChat-native paragraphs and tables without wrappers", () => {
+  it("copies images as WeChat-native paragraphs and tables inside a horizontal scroller", () => {
     const markdown = "![说明](https://example.com/a.png)\n\n| A | B |\n| --- | --- |\n| 1 | 2 |";
     const copied = buildCopyHtml(renderMarkdown(markdown, defaultTheme), defaultTheme);
     const root = document.createRange().createContextualFragment(copied).firstElementChild!;
     expect(root.querySelector("figure")).toBeNull();
     expect(root.querySelector("img")?.parentElement?.tagName).toBe("P");
-    expect(root.querySelector("table")?.parentElement).toBe(root);
+    const scroller = root.querySelector("table")?.parentElement;
+    expect(scroller?.tagName).toBe("SECTION");
+    expect(scroller?.parentElement).toBe(root);
+    expect(scroller?.style.overflowX).toBe("auto");
+    expect(scroller?.childNodes).toHaveLength(1);
     expect(copied).not.toContain("data-");
-    expect([...root.children].map((child) => child.tagName)).toEqual(["P", "P", "TABLE"]);
+    expect([...root.children].map((child) => child.tagName)).toEqual(["P", "P", "SECTION"]);
+  });
+
+  it("keeps short table cells on one line and lets long cells wrap", () => {
+    const markdown = "| 项目 | 说明 |\n| --- | --- |\n| ts-rust | 64 个文件，每个 24 个接口 + 常量，编译并输出 JS 和声明文件 |";
+    const root = document.createRange().createContextualFragment(renderMarkdown(markdown, defaultTheme));
+    const cells = [...root.querySelectorAll<HTMLTableCellElement>("th,td")];
+    expect(cells.map((cell) => cell.style.whiteSpace)).toEqual(["nowrap", "nowrap", "nowrap", "normal"]);
+    expect(cells[3].style.minWidth).toBe("8em");
+    expect(cells.every((cell) => cell.style.wordBreak === "normal")).toBe(true);
   });
 
   it("keeps whitespace inside code blocks and between inline elements", () => {

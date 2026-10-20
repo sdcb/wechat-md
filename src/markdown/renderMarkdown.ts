@@ -9,6 +9,16 @@ import { highlightCodeBlocks } from "./codeHighlight";
 const codeFontFamily =
   "'Sarasa Mono SC','Noto Sans Mono CJK SC','Source Han Mono','SFMono-Regular',Consolas,'Liberation Mono','Courier New',monospace";
 
+/** Table cells up to this display width (CJK counts as 2) never wrap; longer cells wrap normally. */
+const tableNoWrapMaxWidth = 30;
+
+function getTextDisplayWidth(text: string) {
+  let width = 0;
+  for (const char of text.replace(/\s+/g, " ").trim())
+    width += /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/u.test(char) ? 2 : 1;
+  return width;
+}
+
 export function getThemeFontFamily(theme: Theme) {
   const families: Record<Theme["fontFamily"], string> = {
     system: "-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',Arial,sans-serif",
@@ -248,16 +258,31 @@ export function renderMarkdown(markdown: string, theme: Theme, assetUrls: Record
   });
 
   template.content.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
-    table.setAttribute("style", `width:100%;margin:8px 0 24px;border-collapse:collapse;border-spacing:0;table-layout:auto;`);
+    // Wide tables scroll horizontally instead of squeezing short cells into one character per line.
+    const scroller = document.createElement("section");
+    scroller.setAttribute("style", "max-width:100%;margin:8px 0 24px;overflow-x:auto;");
+    table.replaceWith(scroller);
+    scroller.append(table);
+    table.setAttribute(
+      "style",
+      `width:auto;min-width:100%;margin:0;border-collapse:collapse;border-spacing:0;table-layout:auto;`,
+    );
     table.querySelectorAll<HTMLTableCellElement>("th,td").forEach((cell) => {
       const alignment = cell.getAttribute("align") || "left";
       const header = cell.tagName === "TH";
       const minimal = theme.tableStyle === "minimal";
       const accentHeader = theme.tableStyle === "accent-header" && header;
+      const wrapping =
+        getTextDisplayWidth(cell.textContent ?? "") <= tableNoWrapMaxWidth
+          ? "white-space:nowrap;"
+          : "white-space:normal;min-width:8em;";
       cell.setAttribute(
         "style",
-        `padding:10px 12px;border:${minimal ? "0" : `1px solid ${theme.border}`};border-bottom:1px solid ${theme.border};background:${accentHeader ? theme.accent : header && !minimal ? theme.accentSoft : "#ffffff"};color:${accentHeader ? "#ffffff" : header ? theme.heading : theme.text};font-size:14px;line-height:${header ? "1.6" : "1.65"};font-weight:${header ? "700" : "400"};text-align:${alignment};vertical-align:${header ? "middle" : "top"};word-break:break-word;`,
+        `padding:10px 12px;border:${minimal ? "0" : `1px solid ${theme.border}`};border-bottom:1px solid ${theme.border};background:${accentHeader ? theme.accent : header && !minimal ? theme.accentSoft : "#ffffff"};color:${accentHeader ? "#ffffff" : header ? theme.heading : theme.text};font-size:14px;line-height:${header ? "1.6" : "1.65"};font-weight:${header ? "700" : "400"};text-align:${alignment};vertical-align:${header ? "middle" : "top"};${wrapping}word-break:normal;overflow-wrap:break-word;`,
       );
+      cell.querySelectorAll<HTMLElement>("code").forEach((code) => {
+        code.style.wordBreak = "normal";
+      });
     });
     table.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((row, index) => {
       if (index % 2 === 1 && theme.tableStyle !== "minimal")
