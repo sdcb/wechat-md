@@ -19,6 +19,17 @@ describe("Markdown rendering", () => {
     expect(copied).not.toContain("base64");
   });
 
+  it("shows unmatched relative images as placeholders instead of broken images", () => {
+    const rendered = renderMarkdown("文字\n\n![Anders 的回复](./01-anders.png)\n\n![远程](https://example.com/a.png)", defaultTheme);
+    expect(rendered).toContain("缺少本地图片 01-anders.png");
+    expect(rendered).not.toContain('src="./01-anders.png"');
+    expect(rendered).toContain('src="https://example.com/a.png"');
+    const copied = buildCopyHtml(rendered, defaultTheme);
+    expect(copied).toContain("请上传图片：01-anders.png");
+    expect(copied).toContain("Anders 的回复");
+    expect(copied).not.toContain("data-");
+  });
+
   it("applies structural settings from a custom theme", () => {
     const customTheme = {
       ...defaultTheme,

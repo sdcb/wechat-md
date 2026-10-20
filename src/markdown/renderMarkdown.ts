@@ -1,7 +1,7 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import type { Theme, ThemeHeadingLevel } from "../types";
-import { escapeHtml, localAssetPattern, prepareAssetMarkdown } from "./assets";
+import { escapeHtml, getImageFileName, isLocalImagePath, localAssetPattern, prepareAssetMarkdown } from "./assets";
 import { replaceMarkdownLinksWithPlainText } from "./links";
 import { prepareWechatHtml } from "./wechat";
 import { highlightCodeBlocks } from "./codeHighlight";
@@ -210,6 +210,20 @@ export function renderMarkdown(markdown: string, theme: Theme, assetUrls: Record
         image.replaceWith(placeholder);
         return;
       }
+    } else if (isLocalImagePath(image.getAttribute("src") ?? "")) {
+      const fileName = getImageFileName(image.getAttribute("src") ?? "");
+      const placeholder = document.createElement("section");
+      placeholder.dataset.missingImage = fileName;
+      placeholder.dataset.alt = image.alt;
+      placeholder.setAttribute(
+        "style",
+        `margin:8px 0 24px;padding:18px;border:1px dashed ${theme.border};border-radius:6px;background:${theme.accentSoft};color:${theme.muted};font-size:13px;line-height:1.7;text-align:center;`,
+      );
+      placeholder.textContent = `缺少本地图片 ${fileName}，把图片或所在文件夹拖进编辑区即可按文件名匹配`;
+      const block = image.parentElement;
+      if (block?.tagName === "P" && block.children.length === 1 && !(block.textContent ?? "").trim()) block.replaceWith(placeholder);
+      else image.replaceWith(placeholder);
+      return;
     }
     image.setAttribute(
       "style",
@@ -274,6 +288,15 @@ function replaceLocalImagesWithIds(bodyHtml: string, theme: Theme) {
     const block = element.closest<HTMLElement>("[data-image-block]");
     if (block?.nextElementSibling?.hasAttribute("data-image-caption")) block.nextElementSibling.remove();
     (block ?? element).replaceWith(placeholder);
+  });
+  template.content.querySelectorAll<HTMLElement>("[data-missing-image]").forEach((element) => {
+    const placeholder = document.createElement("section");
+    placeholder.setAttribute(
+      "style",
+      `margin:8px 0 24px;padding:16px;border:1px dashed ${theme.border};border-radius:6px;background:${theme.accentSoft};color:${theme.heading};font-size:14px;line-height:1.7;text-align:center;`,
+    );
+    placeholder.innerHTML = `<strong style="display:block;margin-bottom:4px;">请上传图片：${escapeHtml(element.dataset.missingImage ?? "")}</strong><span style="color:${theme.muted};font-size:12px;">${escapeHtml(element.dataset.alt || "无图片说明")}</span>`;
+    element.replaceWith(placeholder);
   });
   return template.innerHTML;
 }

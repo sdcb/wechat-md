@@ -166,7 +166,9 @@ export async function compressImageFile(
 
   const outputType = file.type === "image/png" ? "image/png" : file.type === "image/webp" ? "image/webp" : "image/jpeg";
   let compressed = await canvasToBlob(canvas, outputType, outputType === "image/png" ? undefined : (options.quality ?? 0.84));
-  if (scale === 1 && compressed.size >= file.size) compressed = file instanceof File ? file.slice(0, file.size, file.type) : file;
+  // Re-encoding screenshots as PNG can grow them even after downscaling; keep the original then.
+  const keepOriginal = compressed.size >= file.size;
+  if (keepOriginal) compressed = file instanceof File ? file.slice(0, file.size, file.type) : file;
   const finalType = compressed.type || outputType;
 
   return {
@@ -177,8 +179,8 @@ export async function compressImageFile(
     blob: compressed,
     originalSize: file.size,
     compressedSize: compressed.size,
-    width,
-    height,
+    width: keepOriginal ? originalWidth : width,
+    height: keepOriginal ? originalHeight : height,
     alt,
     createdAt: new Date().toISOString(),
   } satisfies ImageAsset;

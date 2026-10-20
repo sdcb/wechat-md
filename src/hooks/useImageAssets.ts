@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent, Dispatch, SetStateAction } from "react";
 import { compressImageFile, deleteImageAsset, describeStorageError, getAllImageAssets, putImageAsset } from "../imageAssets";
 import type { ImageAsset } from "../imageAssets";
-import { getLocalAssetReferences } from "../markdown/assets";
+import { getLocalAssetReferences, getMissingLocalImages, replaceImageUrl } from "../markdown/assets";
+import type { MissingLocalImage } from "../markdown/assets";
 import type { Notify } from "./useToast";
 
 export const draftAssetOwner = "draft";
@@ -18,6 +19,38 @@ export function formatBytes(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+async function readEntryFiles(entry: FileSystemEntry, depth = 0): Promise<File[]> {
+  if (entry.isFile) {
+    return new Promise((resolve) =>
+      (entry as FileSystemFileEntry).file(
+        (file) => resolve([file]),
+        () => resolve([]),
+      ),
+    );
+  }
+  if (!entry.isDirectory || depth > 3) return [];
+  const reader = (entry as FileSystemDirectoryEntry).createReader();
+  const entries: FileSystemEntry[] = [];
+  // readEntries returns results in batches until it yields an empty array.
+  for (;;) {
+    const batch = await new Promise<FileSystemEntry[]>((resolve) => reader.readEntries(resolve, () => resolve([])));
+    if (!batch.length) break;
+    entries.push(...batch);
+  }
+  const nested = await Promise.all(entries.map((child) => readEntryFiles(child, depth + 1)));
+  return nested.flat();
+}
+
+// Entries must be captured synchronously during the drop event; reading them can happen afterwards.
+function collectDroppedFiles(dataTransfer: DataTransfer) {
+  const entries = Array.from(dataTransfer.items)
+    .filter((item) => item.kind === "file")
+    .map((item) => item.webkitGetAsEntry?.())
+    .filter((entry): entry is FileSystemEntry => Boolean(entry));
+  if (!entries.length) return Promise.resolve(Array.from(dataTransfer.files));
+  return Promise.all(entries.map((entry) => readEntryFiles(entry))).then((files) => files.flat());
 }
 
 function escapeRegExp(value: string) {
@@ -57,28 +90,55 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
       .map((reference) => byId.get(reference.id))
       .filter((asset): asset is ImageAsset => Boolean(asset));
   }, [assets, markdown]);
+  const missingImages = useMemo(() => getMissingLocalImages(markdown), [markdown]);
 
   async function addImageFiles(files: File[]) {
-    const selected = files.filter((file) => file.type.startsWith("image/")).slice(0, 10);
-    if (!selected.length) return;
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    if (!images.length) return;
+    const missingByName = new Map<string, MissingLocalImage[]>();
+    getMissingLocalImages(markdown).forEach((image) => {
+      const key = image.fileName.toLowerCase();
+      missingByName.set(key, [...(missingByName.get(key) ?? []), image]);
+    });
+    const matched = images.filter((file) => missingByName.has(file.name.toLowerCase()));
+    // When the draft references local files, treat dropped files as candidates for those references only.
+    const matching = missingByName.size > 0 && matched.length > 0;
+    const selected = matching ? matched : images.slice(0, 10);
     setProcessing(true);
     try {
-      const added: ImageAsset[] = [];
+      const added: Array<{ asset: ImageAsset; targets: MissingLocalImage[] }> = [];
       for (const file of selected) {
-        const alt = file.name.replace(/\.[^.]+$/, "").trim();
-        const asset = await compressImageFile(file, draftAssetOwner, file.name || "粘贴图片", {}, undefined, alt === "image" ? "" : alt);
+        const targets = matching ? (missingByName.get(file.name.toLowerCase()) ?? []) : [];
+        const fileAlt = file.name.replace(/\.[^.]+$/, "").trim();
+        const alt = targets.find((target) => target.alt)?.alt ?? (fileAlt === "image" ? "" : fileAlt);
+        const asset = await compressImageFile(file, draftAssetOwner, file.name || "粘贴图片", {}, undefined, alt);
         await putImageAsset(asset);
-        added.push(asset);
+        added.push({ asset, targets });
       }
       const urls = { ...assetUrlsRef.current };
-      added.forEach((asset) => (urls[asset.id] = URL.createObjectURL(asset.blob)));
+      added.forEach(({ asset }) => (urls[asset.id] = URL.createObjectURL(asset.blob)));
       assetUrlsRef.current = urls;
       setAssetUrls(urls);
-      setAssets((items) => [...items, ...added]);
-      insertBlock(added.map((asset) => `![${asset.alt}](asset://${asset.id})`).join("\n\n"));
-      const before = added.reduce((total, asset) => total + asset.originalSize, 0);
-      const after = added.reduce((total, asset) => total + asset.compressedSize, 0);
-      notify(`已添加 ${added.length} 张图片（${formatBytes(before)} → ${formatBytes(after)}）`);
+      setAssets((items) => [...items, ...added.map(({ asset }) => asset)]);
+      if (matching)
+        setMarkdown((content) =>
+          added.reduce(
+            (result, { asset, targets }) =>
+              targets.reduce((current, target) => replaceImageUrl(current, target.url, `asset://${asset.id}`), result),
+            content,
+          ),
+        );
+      else insertBlock(added.map(({ asset }) => `![${asset.alt}](asset://${asset.id})`).join("\n\n"));
+      const before = added.reduce((total, { asset }) => total + asset.originalSize, 0);
+      const after = added.reduce((total, { asset }) => total + asset.compressedSize, 0);
+      const size = `${formatBytes(before)} → ${formatBytes(after)}`;
+      if (matching) {
+        const remaining = missingByName.size - added.length;
+        notify(
+          `已匹配 ${added.length} 张本地图片（${size}）${remaining > 0 ? `，还缺 ${remaining} 张` : ""}`,
+          remaining > 0 ? "warning" : "success",
+        );
+      } else notify(`已添加 ${added.length} 张图片（${size}）`);
     } catch (error) {
       notify(describeStorageError(error, "添加图片"), "error");
     } finally {
@@ -88,10 +148,9 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
 
   function handleDrop(event: ReactDragEvent<HTMLTextAreaElement>) {
     setDragActive(false);
-    const files = Array.from(event.dataTransfer.files).filter((file) => file.type.startsWith("image/"));
-    if (!files.length) return;
+    if (!Array.from(event.dataTransfer.items).some((item) => item.kind === "file")) return;
     event.preventDefault();
-    void addImageFiles(files);
+    void collectDroppedFiles(event.dataTransfer).then((files) => addImageFiles(files));
   }
 
   async function removeImage(asset: ImageAsset) {
@@ -123,5 +182,16 @@ export function useImageAssets({ markdown, setMarkdown, insertBlock, notify }: U
     if (!assetUrlsRef.current[asset.id]) URL.revokeObjectURL(url);
   }
 
-  return { assetUrls, referencedAssets, processing, dragActive, setDragActive, addImageFiles, handleDrop, removeImage, downloadImage };
+  return {
+    assetUrls,
+    referencedAssets,
+    missingImages,
+    processing,
+    dragActive,
+    setDragActive,
+    addImageFiles,
+    handleDrop,
+    removeImage,
+    downloadImage,
+  };
 }

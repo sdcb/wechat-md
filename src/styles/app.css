@@ -394,6 +394,47 @@ button:disabled {
   line-height: 1.6;
 }
 
+.missingBadge {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #fff4ce;
+  color: #8a5300;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.missingImages {
+  display: grid;
+  gap: 8px;
+}
+
+.missingImages ul {
+  max-height: 160px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px dashed var(--stroke-strong);
+  border-radius: var(--radius-sm);
+  background: #fafafa;
+  color: var(--fg-2);
+  font-family: var(--font-code);
+  font-size: 12px;
+  list-style: none;
+}
+
+.missingImages li {
+  line-height: 1.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.imagePopoverActions {
+  display: flex;
+  gap: 8px;
+}
+
 .imageList {
   display: grid;
   gap: 4px;

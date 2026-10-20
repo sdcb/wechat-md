@@ -11,6 +11,7 @@ type UseClipboardOptions = {
   copyHtml: string;
   copyPlainText: string;
   localImageCount: number;
+  missingImageCount: number;
   addImageFiles: (files: File[]) => Promise<void>;
   notify: Notify;
 };
@@ -23,6 +24,7 @@ export function useClipboard({
   copyHtml,
   copyPlainText,
   localImageCount,
+  missingImageCount,
   addImageFiles,
   notify,
 }: UseClipboardOptions) {
@@ -64,7 +66,8 @@ export function useClipboard({
     }
     setCopyState("copied");
     window.setTimeout(() => setCopyState("idle"), 1800);
-    if (localImageCount)
+    if (missingImageCount) notify(`已复制。其中 ${missingImageCount} 张本地图片尚未匹配到文件，已以文件名占位。`, "warning", 8000);
+    else if (localImageCount)
       notify(
         `已复制。其中 ${localImageCount} 张本地图片以 ID 占位，请在公众号里手动上传替换（可在左下角「图片」中下载）。`,
         "warning",
@@ -102,7 +105,9 @@ export function useClipboard({
     event.preventDefault();
     replaceSelection(textarea, content, content.includes("\n"));
     const prefix = detection.type === "word" ? "已将 Word 内容转换为 Markdown" : "已将富文本转换为 Markdown";
-    notify(`${prefix}${converted.skippedImages ? `，${converted.skippedImages} 张本地图片需重新添加` : ""}`, "info", 3600);
+    if (converted.localImages)
+      notify(`${prefix}。${converted.localImages} 张本地图片待匹配：把图片或所在文件夹拖进编辑区即可`, "warning", 8000);
+    else notify(`${prefix}${converted.skippedImages ? `，${converted.skippedImages} 张本地图片需重新添加` : ""}`, "info", 3600);
   }
 
   return { copyState, copyForWechat, handleEditorPaste };

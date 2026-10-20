@@ -125,6 +125,35 @@ test("Word clipboard content is converted with a Word-specific message", async (
   await expect(page.getByText("已将 Word 内容转换为 Markdown")).toBeVisible();
 });
 
+test("VS Code preview images become relative paths and are matched by dropped files", async ({ page }) => {
+  await writeClipboard(
+    page,
+    "正文 甲 乙",
+    '<p>正文</p><p><img src="https://file+.vscode-resource.vscode-cdn.net/C%3A/blog/01-a.png" alt="甲图" data-src="./01-a.png"></p>' +
+      '<p><img src="https://file+.vscode-resource.vscode-cdn.net/C%3A/blog/02-b.png" alt="乙图" data-src="./02-b.png"></p>',
+  );
+  await pasteInto(page);
+  await expect(editor(page)).toHaveValue(/!\[甲图\]\(\.\/01-a\.png\)/);
+  await expect(page.getByText("2 张本地图片待匹配")).toBeVisible();
+  await expect(page.locator(".articleBody").getByText("缺少本地图片 01-a.png")).toBeVisible();
+  await expect(page.getByRole("button", { name: /缺 2/ })).toBeVisible();
+
+  await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = 8;
+    canvas.getContext("2d")!.fillRect(0, 0, 8, 8);
+    const blob = await new Promise<Blob>((resolve) => canvas.toBlob((value) => resolve(value!), "image/png"));
+    const data = new DataTransfer();
+    ["01-A.png", "02-b.png", "unrelated.png"].forEach((name) => data.items.add(new File([blob], name, { type: "image/png" })));
+    document.querySelector("textarea")!.dispatchEvent(new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await expect(editor(page)).toHaveValue(/!\[甲图\]\(asset:\/\/IMG-[^)]+\)[\s\S]*!\[乙图\]\(asset:\/\/IMG-[^)]+\)/);
+  await expect(editor(page)).not.toHaveValue(/unrelated/);
+  await expect(page.locator(".articleBody img")).toHaveCount(2);
+  await expect(page.getByText("已匹配 2 张本地图片")).toBeVisible();
+});
+
 test("pasted images are stored locally and listed in the image menu", async ({ page }) => {
   await editor(page).fill("");
   await editor(page).click();

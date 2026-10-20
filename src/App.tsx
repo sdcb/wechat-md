@@ -46,12 +46,14 @@ export default function App() {
   const copyHtml = useMemo(() => buildCopyHtml(bodyHtml, defaultTheme), [bodyHtml]);
   const copyPlainText = useMemo(() => buildCopyPlainText(markdown), [markdown]);
   const localImageCount = useMemo(() => getLocalAssetReferences(markdown).length, [markdown]);
+  const missingImageCount = images.missingImages.length;
   const clipboard = useClipboard({
     markdown,
     setMarkdown,
     copyHtml,
     copyPlainText,
     localImageCount,
+    missingImageCount,
     addImageFiles: images.addImageFiles,
     notify,
   });
@@ -73,6 +75,7 @@ export default function App() {
           toolbar={
             <ImageMenu
               assets={images.referencedAssets}
+              missing={images.missingImages}
               urls={images.assetUrls}
               processing={images.processing}
               onAdd={(files) => void images.addImageFiles(files)}

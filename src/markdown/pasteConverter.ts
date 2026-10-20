@@ -1,6 +1,7 @@
 import DOMPurify from "dompurify";
 import TurndownService from "turndown";
 import { gfm } from "turndown-plugin-gfm";
+import { getImageFileName, isLocalImagePath } from "./assets";
 
 const pasteTurndownService = new TurndownService({
   headingStyle: "atx",
@@ -96,9 +97,20 @@ export function convertPastedHtml(html: string) {
   normalizeOfficeLists(container);
 
   let skippedImages = 0;
+  let localImages = 0;
   container.querySelectorAll<HTMLImageElement>("img").forEach((image) => {
-    const sourceUrl = (image.getAttribute("src") ?? "").trim();
-    if (sourceUrl && !/^(?:file|blob|cid|data):/i.test(sourceUrl)) return;
+    // VS Code's Markdown preview keeps the original Markdown path in data-src; src is a webview-only URL.
+    const originalSource = (image.getAttribute("data-src") ?? "").trim();
+    let sourceUrl = (image.getAttribute("src") ?? "").trim();
+    if (originalSource && (isLocalImagePath(sourceUrl) || !sourceUrl)) sourceUrl = originalSource;
+    else if (/vscode-resource|vscode-cdn\.net/i.test(sourceUrl)) sourceUrl = `./${getImageFileName(sourceUrl)}`;
+    else if (/^file:/i.test(sourceUrl)) sourceUrl = `./${getImageFileName(sourceUrl)}`;
+    if (sourceUrl && isLocalImagePath(sourceUrl)) {
+      image.setAttribute("src", sourceUrl.replace(/\s/g, "%20"));
+      localImages += 1;
+      return;
+    }
+    if (sourceUrl && !/^(?:blob|cid|data):/i.test(sourceUrl)) return;
     const placeholder = document.createElement("span");
     placeholder.textContent = `【图片需重新上传${image.alt ? `：${image.alt}` : ""}】`;
     image.replaceWith(placeholder);
@@ -125,5 +137,5 @@ export function convertPastedHtml(html: string) {
     .replace(/^(\s*(?:\d+\.|[-*+]))\s{2,}/gm, "$1 ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  return { markdown, skippedImages };
+  return { markdown, skippedImages, localImages };
 }
