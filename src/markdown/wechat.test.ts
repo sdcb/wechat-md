@@ -45,6 +45,7 @@ describe("WeChat copy compatibility", () => {
     const root = document.createRange().createContextualFragment(copied).firstElementChild!;
     expect(root.querySelector("figure")).toBeNull();
     expect(root.querySelector("img")?.parentElement?.tagName).toBe("P");
+    expect(root.querySelector("img")?.getAttribute("referrerpolicy")).toBe("no-referrer");
     const scroller = root.querySelector("table")?.parentElement;
     expect(scroller?.tagName).toBe("SECTION");
     expect(scroller?.parentElement).toBe(root);
@@ -67,7 +68,21 @@ describe("WeChat copy compatibility", () => {
     const copied = buildCopyHtml(renderMarkdown("**甲** *乙*\n\n```text\n  a\n\n  b\n```", defaultTheme), defaultTheme);
     const root = document.createRange().createContextualFragment(copied).firstElementChild!;
     expect(root.querySelector("p")?.textContent).toBe("甲 乙");
-    expect(root.querySelector("pre")?.textContent).toBe("  a\n\n  b\n");
+    expect(root.querySelector("pre > code")?.innerHTML).toBe("&nbsp;&nbsp;a<br><br>&nbsp;&nbsp;b");
+  });
+
+  it("keeps highlighted code spacing and indentation without relying on white-space:pre", () => {
+    const markdown = "```csharp\nclass Program\n{\n    static void Main()\n\t{\n    }\n}\n```";
+    const copied = buildCopyHtml(renderMarkdown(markdown, defaultTheme), defaultTheme);
+    const pre = document.createRange().createContextualFragment(copied).querySelector("pre")!;
+    expect(pre.querySelector("span")).not.toBeNull();
+    const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+    const texts: string[] = [];
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) texts.push(node.textContent ?? "");
+    expect(texts.some((text) => /[ \t\n\r]/.test(text))).toBe(false);
+    expect(texts.some((text) => /^\u00a0+$/.test(text))).toBe(false);
+    pre.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+    expect(pre.textContent?.replace(/\u00a0/g, " ")).toBe("class Program\n{\n    static void Main()\n    {\n    }\n}");
   });
 
   it("keeps link URLs in plain-text clipboard fallback", () => {

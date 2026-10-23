@@ -242,6 +242,8 @@ export function renderMarkdown(markdown: string, theme: Theme, assetUrls: Record
       else image.replaceWith(placeholder);
       return;
     }
+    // Image hosts such as cnblogs reject hotlinks by Referer; without one they serve the image normally.
+    image.setAttribute("referrerpolicy", "no-referrer");
     image.setAttribute(
       "style",
       `display:block;max-width:100%;height:auto;margin:0 auto;border-radius:${theme.imageStyle === "square" ? 0 : theme.radius}px;border:${theme.imageStyle === "shadow" ? "0" : `1px solid ${theme.border}`};box-shadow:${theme.imageStyle === "shadow" ? "0 10px 28px rgba(15,23,42,.16)" : "none"};`,

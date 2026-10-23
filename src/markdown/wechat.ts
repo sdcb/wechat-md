@@ -98,6 +98,43 @@ export function removeInterBlockWhitespace(root: ParentNode) {
   removable.forEach((node) => node.remove());
 }
 
+/**
+ * The WeChat editor ignores `white-space:pre`: it drops whitespace-only text nodes between highlight
+ * spans and trims spaces before an element, which glues tokens together and loses indentation.
+ * Non-breaking spaces and explicit <br> line breaks survive the paste unchanged.
+ */
+export function formatCodeBlocksForWechat(root: ParentNode) {
+  root.querySelectorAll<HTMLPreElement>("pre").forEach((pre) => {
+    const walker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+    const texts: Text[] = [];
+    for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) texts.push(node);
+    const last = texts.at(-1);
+    if (last) last.data = last.data.replace(/\r?\n$/, "");
+    texts.forEach((node) => {
+      const lines = node.data
+        .replace(/\r\n?/g, "\n")
+        .replace(/\t/g, "    ")
+        .replace(/ /g, "\u00a0")
+        .split("\n");
+      const parts: Node[] = [];
+      lines.forEach((line, index) => {
+        if (index > 0) parts.push(document.createElement("br"));
+        if (line) parts.push(document.createTextNode(line));
+      });
+      node.replaceWith(...parts);
+    });
+    // Indentation-only text right before a token would still be a "blank" node, so move it into the token.
+    const blankWalker = document.createTreeWalker(pre, NodeFilter.SHOW_TEXT);
+    const blanks: Text[] = [];
+    for (let node = blankWalker.nextNode() as Text | null; node; node = blankWalker.nextNode() as Text | null)
+      if (/^\u00a0+$/.test(node.data)) blanks.push(node);
+    blanks.forEach((node) => {
+      for (let next = node.nextSibling; next?.nodeType === Node.ELEMENT_NODE && (next as Element).tagName === "SPAN"; next = node.nextSibling)
+        (next as Element).prepend(node);
+    });
+  });
+}
+
 export function prepareWechatHtml(bodyHtml: string, theme: Theme) {
   const template = document.createElement("template");
   template.innerHTML = bodyHtml;
@@ -118,6 +155,7 @@ export function prepareWechatHtml(bodyHtml: string, theme: Theme) {
       .forEach((attribute) => element.removeAttribute(attribute.name));
   });
   flattenNestedListsForWechat(template.content, theme);
+  formatCodeBlocksForWechat(template.content);
   removeInterBlockWhitespace(template.content);
   return template.innerHTML;
 }
