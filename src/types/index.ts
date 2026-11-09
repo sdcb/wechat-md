@@ -21,6 +21,10 @@ export type Theme = {
   codeBg: string;
   inlineCodeColor?: string;
   inlineCodeBg?: string;
+  /** Text color of external links (rendered as underlined text in WeChat). Defaults to accent. */
+  linkColor?: string;
+  /** Color of the small URL shown after external link text. Defaults to muted. */
+  linkUrlColor?: string;
   fontFamily: "system" | "microsoft-yahei" | "pingfang" | "noto-sans" | "serif" | "songti" | "kaiti" | "fangsong" | "rounded" | "arial";
   bodyFontSize: number;
   bodyLineHeight: number;

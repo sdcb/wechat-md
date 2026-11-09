@@ -140,7 +140,17 @@ export function prepareWechatHtml(bodyHtml: string, theme: Theme) {
   template.innerHTML = bodyHtml;
   template.content.querySelectorAll<HTMLAnchorElement>("a[href]").forEach((link) => {
     const href = link.getAttribute("href")?.trim() ?? "";
-    if (!href || classifyLink(href) !== "wechat-article") {
+    const kind = href ? classifyLink(href) : "other";
+    if (kind === "external-http" || kind === "mailto") {
+      // WeChat strips non-article hrefs; a styled span keeps the link look (the URL span follows it already).
+      const span = document.createElement("span");
+      const style = link.getAttribute("style");
+      if (style) span.setAttribute("style", style);
+      span.append(...Array.from(link.childNodes));
+      link.replaceWith(span);
+      return;
+    }
+    if (kind !== "wechat-article") {
       link.replaceWith(document.createTextNode(formatLinkAsPlainText(link.textContent ?? "", href)));
       return;
     }

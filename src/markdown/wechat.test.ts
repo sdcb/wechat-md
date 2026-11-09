@@ -10,7 +10,21 @@ describe("WeChat copy compatibility", () => {
     const copied = buildCopyHtml(html, defaultTheme);
     expect(copied).toContain('href="https://mp.weixin.qq.com/s/ABC"');
     expect(copied).not.toContain('href="https://github.com/demo"');
-    expect(copied).toContain("项目（https://github.com/demo）");
+    const root = document.createRange().createContextualFragment(copied);
+    const label = Array.from(root.querySelectorAll("span")).find((span) => span.textContent === "项目");
+    expect(label?.getAttribute("style")).toContain("text-decoration:underline");
+    expect(label?.nextElementSibling?.textContent).toBe("（github.com/demo）");
+    expect(label?.nextElementSibling?.getAttribute("style")).toContain("font-size:0.85em");
+  });
+
+  it("shows each external URL once and skips it when the text already is the URL", () => {
+    const markdown = "[源码](https://github.com/demo) [GitHub](https://github.com/demo/) [sdcb.ai/x](https://sdcb.ai/x)";
+    const copied = buildCopyHtml(renderMarkdown(markdown, defaultTheme), defaultTheme);
+    expect(copied.match(/（github\.com\/demo）/g)).toHaveLength(1);
+    expect(copied).not.toContain("（sdcb.ai/x）");
+    expect(copied).not.toContain("<a ");
+    const later = buildCopyHtml(renderMarkdown("[sdcb.ai/x](https://sdcb.ai/x) 之后的 [混沌页](https://sdcb.ai/x)", defaultTheme), defaultTheme);
+    expect(later).not.toContain("（sdcb.ai/x）");
   });
 
   it("replaces task checkboxes and keeps nested list order", () => {

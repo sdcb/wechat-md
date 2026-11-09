@@ -5,6 +5,9 @@ const fluentBlueDark = "#004578";
 // mp-darkmode inverts dark text (HSL lightness <= 40%) to 90% - L, but caps brighter colored text at a dim
 // level; a deep indigo therefore turns into a readable light purple in WeChat dark mode.
 const inlineCodePurple = "#2d1467";
+// Same rule for links: fluentBlue (L 42%) gets dimmed in dark mode, these (L <= 40%) invert to brighter tones.
+const linkBlue = "#0b56b0";
+const linkUrlSlate = "#45607f";
 
 export const defaultTheme: Theme = {
   id: "dotnet",
@@ -20,6 +23,8 @@ export const defaultTheme: Theme = {
   codeBg: "#f7f7f7",
   inlineCodeColor: inlineCodePurple,
   inlineCodeBg: "rgba(81,43,212,0.07)",
+  linkColor: linkBlue,
+  linkUrlColor: linkUrlSlate,
   fontFamily: "system",
   bodyFontSize: 16,
   bodyLineHeight: 1.8,

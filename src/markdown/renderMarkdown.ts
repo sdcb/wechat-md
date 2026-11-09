@@ -2,7 +2,7 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import type { Theme, ThemeHeadingLevel } from "../types";
 import { escapeHtml, getImageFileName, isLocalImagePath, localAssetPattern, prepareAssetMarkdown } from "./assets";
-import { replaceMarkdownLinksWithPlainText } from "./links";
+import { classifyLink, formatLinkUrlForDisplay, normalizeLinkText, replaceMarkdownLinksWithPlainText } from "./links";
 import { prepareWechatHtml } from "./wechat";
 import { highlightCodeBlocks } from "./codeHighlight";
 
@@ -129,7 +129,31 @@ export function renderMarkdown(markdown: string, theme: Theme, assetUrls: Record
     .forEach((element) =>
       element.setAttribute("style", `color:${theme.muted};text-decoration:line-through;text-decoration-thickness:1.5px;`),
     );
+  // WeChat only keeps links to its own articles clickable, so other links show as underlined text plus a
+  // small URL. The URL appears once per address and is skipped when the link text already reads as the URL.
+  const shownUrls = new Set<string>();
   template.content.querySelectorAll<HTMLElement>("a").forEach((element) => {
+    const href = element.getAttribute("href")?.trim() ?? "";
+    const kind = href ? classifyLink(href) : "other";
+    if (kind === "external-http" || kind === "mailto") {
+      element.setAttribute(
+        "style",
+        `color:${theme.linkColor ?? theme.accent};text-decoration:underline;text-underline-offset:3px;border-bottom:0;word-break:break-all;`,
+      );
+      element.setAttribute("rel", "noopener noreferrer");
+      const key = normalizeLinkText(href);
+      const label = element.textContent ?? "";
+      // Link text that reads as the URL also counts as having shown it.
+      const textIsUrl = normalizeLinkText(label) === key;
+      const showUrl = !textIsUrl && !shownUrls.has(key) && !element.querySelector("img");
+      if (textIsUrl || showUrl) shownUrls.add(key);
+      if (!showUrl) return;
+      const url = document.createElement("span");
+      url.setAttribute("style", `color:${theme.linkUrlColor ?? theme.muted};font-size:0.85em;word-break:break-all;`);
+      url.textContent = `（${formatLinkUrlForDisplay(href)}）`;
+      element.after(url);
+      return;
+    }
     const decoration =
       theme.linkStyle === "underline"
         ? "text-decoration:underline;text-underline-offset:3px;border-bottom:0;"

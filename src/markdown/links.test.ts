@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyLink, formatLinkAsPlainText, isWechatArticleUrl, summarizeMarkdownLinks } from "./links";
+import { classifyLink, formatLinkAsPlainText, formatLinkUrlForDisplay, isWechatArticleUrl, summarizeMarkdownLinks } from "./links";
 
 describe("Markdown link compatibility", () => {
   it("recognizes WeChat article links without private attributes", () => {
@@ -12,6 +12,18 @@ describe("Markdown link compatibility", () => {
     expect(formatLinkAsPlainText("GitHub", "https://github.com/demo")).toBe("GitHub（https://github.com/demo）");
     expect(formatLinkAsPlainText("https://github.com/demo", "https://github.com/demo")).toBe("https://github.com/demo");
     expect(formatLinkAsPlainText("联系我们", "mailto:test@example.com")).toBe("联系我们（test@example.com）");
+  });
+
+  it("does not repeat a URL that only differs from the text by scheme, www or trailing slash", () => {
+    expect(formatLinkAsPlainText("sdcb.ai/arithmetic", "https://sdcb.ai/arithmetic")).toBe("sdcb.ai/arithmetic");
+    expect(formatLinkAsPlainText("GitHub.com/sdcb", "https://www.github.com/sdcb/")).toBe("GitHub.com/sdcb");
+    expect(formatLinkAsPlainText("test@example.com", "mailto:test@example.com")).toBe("test@example.com");
+  });
+
+  it("shortens URLs for display but keeps the insecure http scheme", () => {
+    expect(formatLinkUrlForDisplay("https://github.com/sdcb/Arithmetic/")).toBe("github.com/sdcb/Arithmetic");
+    expect(formatLinkUrlForDisplay("http://example.com")).toBe("http://example.com");
+    expect(formatLinkUrlForDisplay("mailto:test@example.com")).toBe("test@example.com");
   });
 
   it("summarizes explicit, autolink and bare URL forms", () => {

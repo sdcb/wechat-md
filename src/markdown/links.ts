@@ -34,8 +34,22 @@ export function classifyLink(href: string): LinkKind {
   return "other";
 }
 
+/** Compares link text with its URL ignoring the scheme, "www.", a trailing slash and letter case. */
 export function normalizeLinkText(value: string) {
-  return value.trim().replace(/\/$/, "");
+  return value
+    .trim()
+    .replace(/^(?:https?:\/\/|mailto:)/i, "")
+    .replace(/^www\./i, "")
+    .replace(/\/$/, "")
+    .toLowerCase();
+}
+
+/** Short form of a URL shown next to link text: drops "https://", "mailto:" and a trailing slash; keeps "http://". */
+export function formatLinkUrlForDisplay(href: string) {
+  return href
+    .trim()
+    .replace(/^(?:https:\/\/|mailto:)/i, "")
+    .replace(/\/$/, "");
 }
 
 export function formatLinkAsPlainText(text: string, href: string) {
