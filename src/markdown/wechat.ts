@@ -132,6 +132,13 @@ export function formatCodeBlocksForWechat(root: ParentNode) {
       for (let next = node.nextSibling; next?.nodeType === Node.ELEMENT_NODE && (next as Element).tagName === "SPAN"; next = node.nextSibling)
         (next as Element).prepend(node);
     });
+    // Without white-space:pre the editor wraps long lines (and justifies them). A -webkit-box <code> with
+    // nowrap is kept as one wide box, so long lines scroll horizontally instead, as in mdnice / doocs-md.
+    const appendStyle = (element: Element, style: string) =>
+      element.setAttribute("style", `${(element.getAttribute("style") ?? "").replace(/;?\s*$/, ";")}${style}`);
+    appendStyle(pre, "overflow-x:auto;text-align:left;");
+    const code = pre.querySelector(":scope > code");
+    if (code) appendStyle(code, "display:-webkit-box;overflow-x:auto;white-space:nowrap;text-align:left;");
   });
 }
 

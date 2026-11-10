@@ -97,6 +97,9 @@ describe("WeChat copy compatibility", () => {
     expect(texts.some((text) => /^\u00a0+$/.test(text))).toBe(false);
     pre.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
     expect(pre.textContent?.replace(/\u00a0/g, " ")).toBe("class Program\n{\n    static void Main()\n    {\n    }\n}");
+    const codeStyle = pre.querySelector("code")?.getAttribute("style") ?? "";
+    expect(codeStyle).toContain("display:-webkit-box;overflow-x:auto;white-space:nowrap;");
+    expect(pre.getAttribute("style")).toContain("text-align:left;");
   });
 
   it("keeps link URLs in plain-text clipboard fallback", () => {
