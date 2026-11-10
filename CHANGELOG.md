@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.3.7
+
+- 顶栏在「WeChat MD」右侧以小号灰字显示当前版本号（取自 package.json），不影响原有布局。
+
 ## v1.3.6
 
 - 代码块粘贴到公众号后不再自动折行：长行改为横向滚动，也不再因两端对齐把空格拉得很宽（复制时 `<code>` 使用 `display:-webkit-box` 加 `white-space:nowrap`，与 mdnice、doocs/md 做法一致）。

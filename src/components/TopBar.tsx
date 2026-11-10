@@ -24,6 +24,9 @@ export function TopBar({ saveState, copyState, canCopy, onCopy }: TopBarProps) {
         <span className="brandName">
           WeChat <strong>MD</strong>
         </span>
+        <span className="appVersion" title={`版本 ${__APP_VERSION__}`}>
+          v{__APP_VERSION__}
+        </span>
       </div>
       <div className="topBarActions">
         <span className={`saveState ${saveState}`} role="status">
