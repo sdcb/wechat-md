@@ -98,6 +98,18 @@ export function removeInterBlockWhitespace(root: ParentNode) {
   removable.forEach((node) => node.remove());
 }
 
+/** Sets inline style properties, dropping earlier declarations of the same property; null only removes it. */
+function setStyles(element: Element, styles: Record<string, string | null>) {
+  const kept = (element.getAttribute("style") ?? "")
+    .split(";")
+    .map((declaration) => declaration.trim())
+    .filter((declaration) => declaration && !(declaration.split(":")[0].trim().toLowerCase() in styles));
+  Object.entries(styles).forEach(([name, value]) => {
+    if (value !== null) kept.push(`${name}:${value}`);
+  });
+  element.setAttribute("style", `${kept.join(";")};`);
+}
+
 /**
  * The WeChat editor ignores `white-space:pre`: it drops whitespace-only text nodes between highlight
  * spans and trims spaces before an element, which glues tokens together and loses indentation.
@@ -134,11 +146,19 @@ export function formatCodeBlocksForWechat(root: ParentNode) {
     });
     // Without white-space:pre the editor wraps long lines (and justifies them). A -webkit-box <code> with
     // nowrap is kept as one wide box, so long lines scroll horizontally instead, as in mdnice / doocs-md.
-    const appendStyle = (element: Element, style: string) =>
-      element.setAttribute("style", `${(element.getAttribute("style") ?? "").replace(/;?\s*$/, ";")}${style}`);
-    appendStyle(pre, "overflow-x:auto;text-align:left;");
+    // Each property is declared once: with duplicates WeChat may keep the earlier white-space:pre, which it
+    // ignores, so the code wraps at spaces again.
+    setStyles(pre, { "white-space": null, "overflow-x": "auto", "text-align": "left", "letter-spacing": "0", "text-indent": "0" });
     const code = pre.querySelector(":scope > code");
-    if (code) appendStyle(code, "display:-webkit-box;overflow-x:auto;white-space:nowrap;text-align:left;");
+    if (code)
+      setStyles(code, {
+        display: "-webkit-box",
+        "overflow-x": "auto",
+        "white-space": "nowrap",
+        "text-align": "left",
+        "letter-spacing": "0",
+        "text-indent": "0",
+      });
   });
 }
 

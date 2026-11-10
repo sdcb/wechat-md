@@ -7,7 +7,7 @@ import { prepareWechatHtml } from "./wechat";
 import { highlightCodeBlocks } from "./codeHighlight";
 
 const codeFontFamily =
-  "'Sarasa Mono SC','Noto Sans Mono CJK SC','Source Han Mono','SFMono-Regular',Consolas,'Liberation Mono','Courier New',monospace";
+  "'Sarasa Mono SC','Noto Sans Mono CJK SC','Source Han Mono','SFMono-Regular',Menlo,Monaco,Consolas,'Liberation Mono','Droid Sans Mono',monospace";
 
 /** Table cells up to this display width (CJK counts as 2) never wrap; longer cells wrap normally. */
 const tableNoWrapMaxWidth = 30;
